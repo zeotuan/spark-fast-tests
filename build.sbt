@@ -1,7 +1,6 @@
 val scala2_13= "2.13.13"
 val scala2_12= "2.12.15"
 val sparkVersion = settingKey[String]("Spark version")
-sparkVersion := System.getProperty("spark.testVersion", "3.4.2")
 
 inThisBuild(Seq(
   organization := "com.github.zeotuan",
@@ -13,6 +12,7 @@ inThisBuild(Seq(
     Developer("MrPowers", "Matthew Powers", "@MrPowers", url("https://github.com/MrPowers")),
     Developer("zeotuan", "Anh Tuan Pham", "zeotuan@gmail.com", url("https://github.com/zeotuan")),
   ),
+  ThisBuild / sparkVersion := System.getProperty("spark.testVersion", "3.4.2"),
   crossScalaVersions := {
     sparkVersion.value match {
       case versionRegex("3", m, _) if m.toInt >= 2 => Seq(scala2_12, scala2_13)
@@ -32,8 +32,6 @@ Compile / scalafmtOnCompile:= true
 version := "1.3.0"
 
 val versionRegex      = """^(.*)\.(.*)\.(.*)$""".r
-
-
 
 enablePlugins(JmhPlugin)
 
