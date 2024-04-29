@@ -79,7 +79,7 @@ class SeqLikeExtensionTest extends AnyFreeSpec with SparkSessionTestWrapper {
         ("li", 49.0),
         ("alice", 5.0)
       ).toDF.collect()
-      assert(source.approximateSameElements(expected, RowComparer.areRowsEqual(_, _, 0.00000000002)))
+      assert(source.approximateSameElements(expected, RowComparer.areRowsEqual(_, _, 0.0000000002)))
     }
 
     "check non equal Seq[Row] with tolerance" in {
