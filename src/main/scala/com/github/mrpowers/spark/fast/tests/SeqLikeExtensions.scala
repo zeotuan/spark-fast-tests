@@ -1,6 +1,5 @@
 package com.github.mrpowers.spark.fast.tests
 
-import scala.collection.generic.IsTraversableLike
 import scala.collection.{GenIterable, SeqLike}
 
 object SeqLikeExtensions {
