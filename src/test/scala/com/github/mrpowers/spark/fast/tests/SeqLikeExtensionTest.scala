@@ -42,7 +42,6 @@ class SeqLikeExtensionTest extends AnyFreeSpec with SparkSessionTestWrapper {
         ("alice", 5)
       ).toDF.collect()
 
-
       assert(source.approximateSameElements(expected, RowComparer.areRowsEqual(_, _)))
     }
 
@@ -65,32 +64,13 @@ class SeqLikeExtensionTest extends AnyFreeSpec with SparkSessionTestWrapper {
       assert(!source.approximateSameElements(expected, RowComparer.areRowsEqual(_, _)))
     }
 
-    "check non equal Seq[Row] with strictType" in {
+    "check equal Seq[Row] with tolerance" in {
 
       val source = Seq(
-        ("juan", 12.0),
-        ("bob", 1.0),
-        ("li", 49.0),
-        ("alice", 5.0)
-      ).toDF.collect().toSeq
-
-      val expected = Seq(
-        ("juan", 12),
-        ("bob", 1),
-        ("li", 49),
-        ("alice", 5)
-      ).toDF.collect()
-
-      assert(!source.approximateSameElements(expected, RowComparer.areRowsEqual(_, _)))
-    }
-
-    "check equal Seq[Row] with tolerance and strictType" in {
-
-      val source = Seq(
-        ("juan", 12.00000000002),
-        ("bob", 1.00000000002),
-        ("li", 49.00000000002),
-        ("alice", 5.00000000002)
+        ("juan", 12.00000000001),
+        ("bob", 1.00000000001),
+        ("li", 49.00000000001),
+        ("alice", 5.00000000001)
       ).toDF.collect().toSeq
 
       val expected = Seq(
@@ -99,11 +79,10 @@ class SeqLikeExtensionTest extends AnyFreeSpec with SparkSessionTestWrapper {
         ("li", 49.0),
         ("alice", 5.0)
       ).toDF.collect()
-
-      assert(source.approximateSameElements(expected, RowComparer.areRowsEqual(_, _, .00000000002)))
+      assert(source.approximateSameElements(expected, RowComparer.areRowsEqual(_, _, 0.00000000002)))
     }
 
-    "check non equal Seq[Row] with tolerance and strictType" in {
+    "check non equal Seq[Row] with tolerance" in {
 
       val source = Seq(
         ("juan", 12.00000000002),
@@ -119,26 +98,7 @@ class SeqLikeExtensionTest extends AnyFreeSpec with SparkSessionTestWrapper {
         ("alice", 5)
       ).toDF.collect()
 
-      assert(!source.approximateSameElements(expected, RowComparer.areRowsEqual(_, _, .00000000002)))
-    }
-
-    "check equal Seq[Row] with tolerance and non strictType checking" in {
-
-      val source = Seq(
-        ("juan", 12.00000000002),
-        ("bob", 1.00000000002),
-        ("li", 49.00000000002),
-        ("alice", 5.00000000002)
-      ).toDF.collect().toSeq
-
-      val expected = Seq(
-        ("juan", 12),
-        ("bob", 1),
-        ("li", 49),
-        ("alice", 5)
-      ).toDF.collect()
-
-      assert(source.approximateSameElements(expected, RowComparer.areRowsEqual(_, _, .00000000002, strictType = false)))
+      assert(!source.approximateSameElements(expected, RowComparer.areRowsEqual(_, _, .00000000001)))
     }
   }
 }

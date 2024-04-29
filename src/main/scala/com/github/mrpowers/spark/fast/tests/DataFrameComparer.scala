@@ -50,8 +50,7 @@ trait DataFrameComparer extends DatasetComparer {
                                               ignoreNullable: Boolean = false,
                                               ignoreColumnNames: Boolean = false,
                                               orderedComparison: Boolean = true,
-                                              ignoreColumnOrder: Boolean = false,
-                                              strictType: Boolean = false): Unit = {
+                                              ignoreColumnOrder: Boolean = false): Unit = {
     assertSmallDatasetEquality[Row](
       actualDF,
       expectedDF,
@@ -59,7 +58,7 @@ trait DataFrameComparer extends DatasetComparer {
       ignoreColumnNames,
       orderedComparison,
       ignoreColumnOrder,
-      equals = RowComparer.areRowsEqual(_, _, precision, strictType)
+      equals = RowComparer.areRowsEqual(_, _, precision)
     )
   }
 
@@ -69,12 +68,11 @@ trait DataFrameComparer extends DatasetComparer {
                                          ignoreNullable: Boolean = false,
                                          ignoreColumnNames: Boolean = false,
                                          orderedComparison: Boolean = true,
-                                         ignoreColumnOrder: Boolean = false,
-                                         strictType: Boolean = false): Unit = {
+                                         ignoreColumnOrder: Boolean = false): Unit = {
     assertLargeDatasetEquality[Row](
       actualDF,
       expectedDF,
-      equals = RowComparer.areRowsEqual(_, _, precision, strictType),
+      equals = RowComparer.areRowsEqual(_, _, precision),
       ignoreNullable,
       ignoreColumnNames,
       orderedComparison,
