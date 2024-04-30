@@ -35,8 +35,6 @@ object RowComparer {
           case _                                => o1 == o2
         }
         if (!valid) {
-          println(o1)
-          println(o2)
           return false
         }
       }

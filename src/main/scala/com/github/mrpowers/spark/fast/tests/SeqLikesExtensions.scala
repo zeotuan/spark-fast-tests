@@ -44,6 +44,7 @@ object SeqLikesExtensions {
         these.hasNext == those.hasNext
     }
 
+    // scala2.13 optimization: check number of element if it can be cheaply computed
     private def getKnownSize(s: Seq[T]): Int = Try(s.getClass.getMethod("knownSize").invoke(s).asInstanceOf[Int]).getOrElse(s.length)
   }
 
