@@ -11,7 +11,6 @@ trait SparkSessionTestWrapper {
       .appName("spark session")
       .config("spark.sql.shuffle.partitions", "1")
       .getOrCreate()
-    session.sparkContext.setLogLevel("ERROR")
     session
   }
 

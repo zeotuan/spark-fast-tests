@@ -1,9 +1,9 @@
 package com.github.mrpowers.spark.fast.tests
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.functions._
-import SeqLikeExtensions._
+import SeqLikesExtensions._
 
 import scala.reflect.ClassTag
 
@@ -74,7 +74,6 @@ Expected DataFrame Row Count: '$expectedCount'
   private def assertSmallDatasetContentEquality[T](actualDS: Dataset[T], expectedDS: Dataset[T], truncate: Int, equals: (T, T) => Boolean): Unit = {
     val a = actualDS.collect()
     val e = expectedDS.collect()
-    a.sameElements(e)
     if (!a.toSeq.approximateSameElements(e, equals)) {
       throw DatasetContentMismatch(betterContentMismatchMessage(a, e, truncate))
     }
