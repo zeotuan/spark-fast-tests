@@ -1,8 +1,9 @@
 package com.github.mrpowers.spark.fast.tests
 
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.sql.Dataset
 import org.apache.spark.sql.functions._
+import SeqLikesExtensions._
 
 import scala.reflect.ClassTag
 
@@ -49,33 +50,38 @@ Expected DataFrame Row Count: '$expectedCount'
                                     ignoreColumnNames: Boolean = false,
                                     orderedComparison: Boolean = true,
                                     ignoreColumnOrder: Boolean = false,
-                                    truncate: Int = 500): Unit = {
+                                    truncate: Int = 500,
+                                    equals: (T, T) => Boolean = (o1: T, o2: T) => o1.equals(o2)): Unit = {
 
     SchemaComparer.assertSchemaEqual(actualDS, expectedDS, ignoreNullable, ignoreColumnNames, ignoreColumnOrder)
     val actual = if (ignoreColumnOrder) orderColumns(actualDS, expectedDS) else actualDS
-    assertSmallDatasetContentEquality(actual, expectedDS, orderedComparison, truncate)
+    assertSmallDatasetContentEquality(actual, expectedDS, orderedComparison, truncate, equals)
   }
 
-  def assertSmallDatasetContentEquality[T](actualDS: Dataset[T], expectedDS: Dataset[T], orderedComparison: Boolean, truncate: Int): Unit = {
+  private def assertSmallDatasetContentEquality[T](actualDS: Dataset[T],
+                                                   expectedDS: Dataset[T],
+                                                   orderedComparison: Boolean,
+                                                   truncate: Int,
+                                                   equals: (T, T) => Boolean): Unit = {
 
     if (orderedComparison) {
-      assertSmallDatasetContentEquality(actualDS, expectedDS, truncate)
+      assertSmallDatasetContentEquality(actualDS, expectedDS, truncate, equals)
     } else {
-      assertSmallDatasetContentEquality(defaultSortDataset(actualDS), defaultSortDataset(expectedDS), truncate)
+      assertSmallDatasetContentEquality(defaultSortDataset(actualDS), defaultSortDataset(expectedDS), truncate, equals)
     }
   }
 
-  def assertSmallDatasetContentEquality[T](actualDS: Dataset[T], expectedDS: Dataset[T], truncate: Int): Unit = {
+  private def assertSmallDatasetContentEquality[T](actualDS: Dataset[T], expectedDS: Dataset[T], truncate: Int, equals: (T, T) => Boolean): Unit = {
     val a = actualDS.collect()
     val e = expectedDS.collect()
-    if (!a.sameElements(e)) {
+    if (!a.toSeq.approximateSameElements(e, equals)) {
       throw DatasetContentMismatch(betterContentMismatchMessage(a, e, truncate))
     }
   }
 
   def defaultSortDataset[T](ds: Dataset[T]): Dataset[T] = ds.sort(ds.columns.map(col).toIndexedSeq: _*)
 
-  def sortPreciseColumns[T](ds: Dataset[T]): Dataset[T] = {
+  private def sortPreciseColumns[T](ds: Dataset[T]): Dataset[T] = {
     val colNames = ds.dtypes
       .withFilter { dtype =>
         !Seq("DoubleType", "DecimalType", "FloatType").contains(dtype._2)
@@ -100,10 +106,10 @@ Expected DataFrame Row Count: '$expectedCount'
     assertLargeDatasetContentEquality(actual, expectedDS, equals, orderedComparison)
   }
 
-  def assertLargeDatasetContentEquality[T: ClassTag](actualDS: Dataset[T],
-                                                     expectedDS: Dataset[T],
-                                                     equals: (T, T) => Boolean,
-                                                     orderedComparison: Boolean): Unit = {
+  private def assertLargeDatasetContentEquality[T: ClassTag](actualDS: Dataset[T],
+                                                             expectedDS: Dataset[T],
+                                                             equals: (T, T) => Boolean,
+                                                             orderedComparison: Boolean): Unit = {
     if (orderedComparison) {
       assertLargeDatasetContentEquality(actualDS, expectedDS, equals)
     } else {
@@ -111,7 +117,7 @@ Expected DataFrame Row Count: '$expectedCount'
     }
   }
 
-  def assertLargeDatasetContentEquality[T: ClassTag](ds1: Dataset[T], ds2: Dataset[T], equals: (T, T) => Boolean): Unit = {
+  private def assertLargeDatasetContentEquality[T: ClassTag](ds1: Dataset[T], ds2: Dataset[T], equals: (T, T) => Boolean): Unit = {
     try {
       val ds1RDD = ds1.rdd.cache()
       val ds2RDD = ds2.rdd.cache()
@@ -140,23 +146,5 @@ Expected DataFrame Row Count: '$expectedCount'
       ds1.rdd.unpersist()
       ds2.rdd.unpersist()
     }
-  }
-
-  def assertApproximateDataFrameEquality(actualDF: DataFrame,
-                                         expectedDF: DataFrame,
-                                         precision: Double,
-                                         ignoreNullable: Boolean = false,
-                                         ignoreColumnNames: Boolean = false,
-                                         orderedComparison: Boolean = true,
-                                         ignoreColumnOrder: Boolean = false): Unit = {
-    assertLargeDatasetEquality[Row](
-      actualDF,
-      expectedDF,
-      equals = RowComparer.areRowsEqual(_, _, precision),
-      ignoreNullable,
-      ignoreColumnNames,
-      orderedComparison,
-      ignoreColumnOrder
-    )
   }
 }
