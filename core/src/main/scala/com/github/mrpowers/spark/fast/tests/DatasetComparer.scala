@@ -38,22 +38,23 @@ Expected DataFrame Row Count: '$expectedCount'
   /**
    * Raises an error unless `actualDS` and `expectedDS` are equal
    */
-  def assertSmallDatasetEquality[T](
+  def assertSmallDatasetEquality[T: ClassTag](
       actualDS: Dataset[T],
       expectedDS: Dataset[T],
       ignoreNullable: Boolean = false,
       ignoreColumnNames: Boolean = false,
       orderedComparison: Boolean = true,
       ignoreColumnOrder: Boolean = false,
+      ignoreMetadata: Boolean = true,
       truncate: Int = 500,
       equals: (T, T) => Boolean = (o1: T, o2: T) => o1.equals(o2)
   ): Unit = {
-    SchemaComparer.assertSchemaEqual(actualDS, expectedDS, ignoreNullable, ignoreColumnNames, ignoreColumnOrder)
+    SchemaComparer.assertSchemaEqual(actualDS, expectedDS, ignoreNullable, ignoreColumnNames, ignoreColumnOrder, ignoreMetadata)
     val actual = if (ignoreColumnOrder) orderColumns(actualDS, expectedDS) else actualDS
     assertSmallDatasetContentEquality(actual, expectedDS, orderedComparison, truncate, equals)
   }
 
-  def assertSmallDatasetContentEquality[T](
+  def assertSmallDatasetContentEquality[T: ClassTag](
       actualDS: Dataset[T],
       expectedDS: Dataset[T],
       orderedComparison: Boolean,
@@ -66,12 +67,12 @@ Expected DataFrame Row Count: '$expectedCount'
       assertSmallDatasetContentEquality(defaultSortDataset(actualDS), defaultSortDataset(expectedDS), truncate, equals)
   }
 
-  def assertSmallDatasetContentEquality[T](actualDS: Dataset[T], expectedDS: Dataset[T], truncate: Int, equals: (T, T) => Boolean): Unit = {
+  def assertSmallDatasetContentEquality[T: ClassTag](actualDS: Dataset[T], expectedDS: Dataset[T], truncate: Int, equals: (T, T) => Boolean): Unit = {
     val a = actualDS.collect().toSeq
     val e = expectedDS.collect().toSeq
     if (!a.approximateSameElements(e, equals)) {
       val arr = ("Actual Content", "Expected Content")
-      val msg = "Diffs\n" ++ DataframeUtil.showDataframeDiff(arr, a.asRows, e.asRows, truncate)
+      val msg = "Diffs\n" ++ ProductUtil.showProductDiff(arr, a, e, truncate)
       throw DatasetContentMismatch(msg)
     }
   }
@@ -98,10 +99,11 @@ Expected DataFrame Row Count: '$expectedCount'
       ignoreNullable: Boolean = false,
       ignoreColumnNames: Boolean = false,
       orderedComparison: Boolean = true,
-      ignoreColumnOrder: Boolean = false
+      ignoreColumnOrder: Boolean = false,
+      ignoreMetadata: Boolean = true
   ): Unit = {
     // first check if the schemas are equal
-    SchemaComparer.assertSchemaEqual(actualDS, expectedDS, ignoreNullable, ignoreColumnNames, ignoreColumnOrder)
+    SchemaComparer.assertSchemaEqual(actualDS, expectedDS, ignoreNullable, ignoreColumnNames, ignoreColumnOrder, ignoreMetadata)
     val actual = if (ignoreColumnOrder) orderColumns(actualDS, expectedDS) else actualDS
     assertLargeDatasetContentEquality(actual, expectedDS, equals, orderedComparison)
   }
@@ -157,7 +159,8 @@ Expected DataFrame Row Count: '$expectedCount'
       ignoreNullable: Boolean = false,
       ignoreColumnNames: Boolean = false,
       orderedComparison: Boolean = true,
-      ignoreColumnOrder: Boolean = false
+      ignoreColumnOrder: Boolean = false,
+      ignoreMetadata: Boolean = true
   ): Unit = {
     val e = (r1: Row, r2: Row) => {
       r1.equals(r2) || RowComparer.areRowsEqual(r1, r2, precision)
@@ -169,7 +172,8 @@ Expected DataFrame Row Count: '$expectedCount'
       ignoreNullable,
       ignoreColumnNames,
       orderedComparison,
-      ignoreColumnOrder
+      ignoreColumnOrder,
+      ignoreMetadata
     )
   }
 }
