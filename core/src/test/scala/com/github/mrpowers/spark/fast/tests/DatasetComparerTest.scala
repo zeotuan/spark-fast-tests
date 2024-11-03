@@ -3,7 +3,8 @@ package com.github.mrpowers.spark.fast.tests
 import org.apache.spark.sql.types._
 import SparkSessionExt._
 import com.github.mrpowers.spark.fast.tests.SchemaComparer.DatasetSchemaMismatch
-import com.github.mrpowers.spark.fast.tests.StringExt.StringOps
+import com.github.mrpowers.spark.fast.tests.TestUtilsExt.ExceptionOps
+import org.apache.spark.sql.functions.col
 import org.scalatest.freespec.AnyFreeSpec
 
 object Person {
@@ -59,11 +60,84 @@ class DatasetComparerTest extends AnyFreeSpec with DatasetComparer with SparkSes
         assertSmallDatasetEquality(sourceDS, expectedDS)
       }
 
-      val colourGroup         = e.getMessage.extractColorGroup
-      val expectedColourGroup = colourGroup.get(Console.GREEN)
-      val actualColourGroup   = colourGroup.get(Console.RED)
-      assert(expectedColourGroup.contains(Seq("[frank,10]", "lucy")))
-      assert(actualColourGroup.contains(Seq("[bob,1]", "alice")))
+      e.assertColorDiff(Seq("Person(bob,1)", "alice"), Seq("Person(frank,10)", "lucy"))
+    }
+
+    "correctly mark unequal element for Dataset[String]" in {
+      import spark.implicits._
+      val sourceDS = Seq("word", "StringType", "StructField(long,LongType,true,{})").toDS
+
+      val expectedDS = List("word", "StringType", "StructField(long,LongType2,true,{})").toDS
+
+      val e = intercept[DatasetContentMismatch] {
+        assertSmallDatasetEquality(sourceDS, expectedDS)
+      }
+
+      e.assertColorDiff(Seq("String(StructField(long,LongType,true,{}))"), Seq("String(StructField(long,LongType2,true,{}))"))
+    }
+
+    "correctly mark unequal element for Dataset[Seq[String]]" in {
+      import spark.implicits._
+
+      val sourceDS = Seq(
+        Seq("apple", "banana", "cherry"),
+        Seq("dog", "cat"),
+        Seq("red", "green", "blue")
+      ).toDS
+
+      val expectedDS = Seq(
+        Seq("apple", "banana2"),
+        Seq("dog", "cat"),
+        Seq("red", "green", "blue")
+      ).toDS
+
+      val e = intercept[DatasetContentMismatch] {
+        assertSmallDatasetEquality(sourceDS, expectedDS)
+      }
+
+      e.assertColorDiff(Seq("banana", "cherry"), Seq("banana2", "MISSING"))
+    }
+
+    "correctly mark unequal element for Dataset[Array[String]]" in {
+      import spark.implicits._
+
+      val sourceDS = Seq(
+        Array("apple", "banana", "cherry"),
+        Array("dog", "cat"),
+        Array("red", "green", "blue")
+      ).toDS
+
+      val expectedDS = Seq(
+        Array("apple", "banana2"),
+        Array("dog", "cat"),
+        Array("red", "green", "blue")
+      ).toDS
+
+      val e = intercept[DatasetContentMismatch] {
+        assertSmallDatasetEquality(sourceDS, expectedDS)
+      }
+
+      e.assertColorDiff(Seq("banana", "cherry"), Seq("banana2", "MISSING"))
+    }
+
+    "correctly mark unequal element for Dataset[Map[String, String]]" in {
+      import spark.implicits._
+
+      val sourceDS = Seq(
+        Map("apple" -> "banana", "apple1" -> "banana1"),
+        Map("apple" -> "banana", "apple1" -> "banana1")
+      ).toDS
+
+      val expectedDS = Seq(
+        Map("apple" -> "banana1", "apple1" -> "banana1"),
+        Map("apple" -> "banana", "apple1"  -> "banana1")
+      ).toDS
+
+      val e = intercept[DatasetContentMismatch] {
+        assertSmallDatasetEquality(sourceDS, expectedDS)
+      }
+
+      e.assertColorDiff(Seq("(apple,banana)"), Seq("(apple,banana1)"))
     }
 
     "works with really long columns" in {
@@ -154,29 +228,64 @@ class DatasetComparerTest extends AnyFreeSpec with DatasetComparer with SparkSes
     }
 
     "throws an error if the DataFrames have different schemas" in {
+      val nestedSchema = StructType(
+        Seq(
+          StructField(
+            "attributes",
+            StructType(
+              Seq(
+                StructField("PostCode", IntegerType, nullable = true)
+              )
+            ),
+            nullable = true
+          )
+        )
+      )
+
+      val nestedSchema2 = StructType(
+        Seq(
+          StructField(
+            "attributes",
+            StructType(
+              Seq(
+                StructField("PostCode", StringType, nullable = true)
+              )
+            ),
+            nullable = true
+          )
+        )
+      )
+
       val sourceDF = spark.createDF(
         List(
-          (1),
-          (5)
+          (1, 2.0, null),
+          (5, 3.0, null)
         ),
-        List(("number", IntegerType, true))
+        List(
+          ("number", IntegerType, true),
+          ("float", DoubleType, true),
+          ("nestedField", nestedSchema, true)
+        )
       )
 
       val expectedDF = spark.createDF(
         List(
-          (1, "word"),
-          (5, "word")
+          (1, "word", null, 1L),
+          (5, "word", null, 2L)
         ),
         List(
           ("number", IntegerType, true),
-          ("word", StringType, true)
+          ("word", StringType, true),
+          ("nestedField", nestedSchema2, true),
+          ("long", LongType, true)
         )
       )
 
-      val e = intercept[DatasetSchemaMismatch] {
+      intercept[DatasetSchemaMismatch] {
         assertLargeDatasetEquality(sourceDF, expectedDF)
       }
-      val e2 = intercept[DatasetSchemaMismatch] {
+
+      intercept[DatasetSchemaMismatch] {
         assertSmallDatasetEquality(sourceDF, expectedDF)
       }
     }
@@ -278,6 +387,29 @@ class DatasetComparerTest extends AnyFreeSpec with DatasetComparer with SparkSes
       )
 
       assertLargeDatasetEquality(sourceDF, expectedDF, ignoreNullable = true)
+    }
+
+    "should not ignore nullable if ignoreNullable is false" in {
+
+      val sourceDF = spark.createDF(
+        List(
+          (1),
+          (5)
+        ),
+        List(("number", IntegerType, false))
+      )
+
+      val expectedDF = spark.createDF(
+        List(
+          (1),
+          (5)
+        ),
+        List(("number", IntegerType, true))
+      )
+
+      intercept[DatasetSchemaMismatch] {
+        assertLargeDatasetEquality(sourceDF, expectedDF)
+      }
     }
 
     "can performed unordered DataFrame comparisons" in {
@@ -407,6 +539,83 @@ class DatasetComparerTest extends AnyFreeSpec with DatasetComparer with SparkSes
       assertLargeDatasetEquality(ds1, ds2, ignoreColumnOrder = true)
       assertLargeDatasetEquality(ds2, ds1, ignoreColumnOrder = true)
     }
+
+    "correctly mark unequal schema field" in {
+      val sourceDF = spark.createDF(
+        List(
+          (1, 2.0),
+          (5, 3.0)
+        ),
+        List(
+          ("number", IntegerType, true),
+          ("float", DoubleType, true)
+        )
+      )
+
+      val expectedDF = spark.createDF(
+        List(
+          (1, "word", 1L),
+          (5, "word", 2L)
+        ),
+        List(
+          ("number", IntegerType, true),
+          ("word", StringType, true),
+          ("long", LongType, true)
+        )
+      )
+
+      val e = intercept[DatasetSchemaMismatch] {
+        assertLargeDatasetEquality(sourceDF, expectedDF)
+      }
+
+      e.assertColorDiff(Seq("float", "DoubleType", "MISSING"), Seq("word", "StringType", "StructField(long,LongType,true,{})"))
+    }
+
+    "can performed Dataset comparisons and ignore metadata" in {
+      val ds1 = Seq(
+        Person("juan", 5),
+        Person("bob", 1),
+        Person("li", 49),
+        Person("alice", 5)
+      ).toDS
+        .withColumn("name", col("name").as("name", new MetadataBuilder().putString("description", "name of the person").build()))
+        .as[Person]
+
+      val ds2 = Seq(
+        Person("juan", 5),
+        Person("bob", 1),
+        Person("li", 49),
+        Person("alice", 5)
+      ).toDS
+        .withColumn("name", col("name").as("name", new MetadataBuilder().putString("description", "name of the individual").build()))
+        .as[Person]
+
+      assertLargeDatasetEquality(ds2, ds1)
+    }
+
+    "can performed Dataset comparisons and compare metadata" in {
+      val ds1 = Seq(
+        Person("juan", 5),
+        Person("bob", 1),
+        Person("li", 49),
+        Person("alice", 5)
+      ).toDS
+        .withColumn("name", col("name").as("name", new MetadataBuilder().putString("description", "name of the person").build()))
+        .as[Person]
+
+      val ds2 = Seq(
+        Person("juan", 5),
+        Person("bob", 1),
+        Person("li", 49),
+        Person("alice", 5)
+      ).toDS
+        .withColumn("name", col("name").as("name", new MetadataBuilder().putString("description", "name of the individual").build()))
+        .as[Person]
+
+      intercept[DatasetSchemaMismatch] {
+        assertLargeDatasetEquality(ds2, ds1, ignoreMetadata = false)
+      }
+    }
   }
 
   "assertSmallDatasetEquality" - {
@@ -430,6 +639,28 @@ class DatasetComparerTest extends AnyFreeSpec with DatasetComparer with SparkSes
       )
 
       assertSmallDatasetEquality(sourceDF, expectedDF, ignoreNullable = true)
+    }
+
+    "should not ignore nullable if ignoreNullable is false" in {
+      val sourceDF = spark.createDF(
+        List(
+          (1),
+          (5)
+        ),
+        List(("number", IntegerType, false))
+      )
+
+      val expectedDF = spark.createDF(
+        List(
+          (1),
+          (5)
+        ),
+        List(("number", IntegerType, true))
+      )
+
+      intercept[DatasetSchemaMismatch] {
+        assertSmallDatasetEquality(sourceDF, expectedDF)
+      }
     }
 
     "can performed unordered DataFrame comparisons" in {
@@ -566,8 +797,119 @@ class DatasetComparerTest extends AnyFreeSpec with DatasetComparer with SparkSes
         Person("alice", 5)
       ).toDS.select("age", "name").as(ds1.encoder)
 
-      assertSmallDatasetEquality(ds1, ds2, ignoreColumnOrder = true)
       assertSmallDatasetEquality(ds2, ds1, ignoreColumnOrder = true)
+    }
+
+    "correctly mark unequal schema field" in {
+      val sourceDF = spark.createDF(
+        List(
+          (1, 2.0),
+          (5, 3.0)
+        ),
+        List(
+          ("number", IntegerType, true),
+          ("float", DoubleType, true)
+        )
+      )
+
+      val expectedDF = spark.createDF(
+        List(
+          (1, "word", 1L),
+          (5, "word", 2L)
+        ),
+        List(
+          ("number", IntegerType, true),
+          ("word", StringType, true),
+          ("long", LongType, true)
+        )
+      )
+
+      val e = intercept[DatasetSchemaMismatch] {
+        assertSmallDatasetEquality(sourceDF, expectedDF)
+      }
+
+      e.assertColorDiff(Seq("float", "DoubleType", "MISSING"), Seq("word", "StringType", "StructField(long,LongType,true,{})"))
+    }
+
+    "correctly mark schema with unequal metadata" in {
+      val sourceDF = spark.createDF(
+        List(
+          (1, 2.0),
+          (5, 3.0)
+        ),
+        List(
+          ("number", IntegerType, true),
+          ("float", DoubleType, true)
+        )
+      )
+
+      val expectedDF = spark
+        .createDF(
+          List(
+            (1, 2.0),
+            (5, 3.0)
+          ),
+          List(
+            ("number", IntegerType, true),
+            ("float", DoubleType, true)
+          )
+        )
+        .withColumn("float", col("float").as("float", new MetadataBuilder().putString("description", "a float").build()))
+
+      val e = intercept[DatasetSchemaMismatch] {
+        assertSmallDatasetEquality(sourceDF, expectedDF, ignoreMetadata = false)
+      }
+
+      e.assertColorDiff(
+        Seq("{}"),
+        Seq("{\"description\":\"a float\"}")
+      )
+    }
+
+    "can performed Dataset comparisons and ignore metadata" in {
+      val ds1 = Seq(
+        Person("juan", 5),
+        Person("bob", 1),
+        Person("li", 49),
+        Person("alice", 5)
+      ).toDS
+        .withColumn("name", col("name").as("name", new MetadataBuilder().putString("description", "name of the person").build()))
+        .as[Person]
+
+      val ds2 = Seq(
+        Person("juan", 5),
+        Person("bob", 1),
+        Person("li", 49),
+        Person("alice", 5)
+      ).toDS
+        .withColumn("name", col("name").as("name", new MetadataBuilder().putString("description", "name of the individual").build()))
+        .as[Person]
+
+      assertSmallDatasetEquality(ds2, ds1)
+    }
+
+    "can performed Dataset comparisons and compare metadata" in {
+      val ds1 = Seq(
+        Person("juan", 5),
+        Person("bob", 1),
+        Person("li", 49),
+        Person("alice", 5)
+      ).toDS
+        .withColumn("name", col("name").as("name", new MetadataBuilder().putString("description", "name of the person").build()))
+        .as[Person]
+
+      val ds2 = Seq(
+        Person("juan", 5),
+        Person("bob", 1),
+        Person("li", 49),
+        Person("alice", 5)
+      ).toDS
+        .withColumn("name", col("name").as("name", new MetadataBuilder().putString("description", "name of the individual").build()))
+        .as[Person]
+
+      intercept[DatasetSchemaMismatch] {
+        assertSmallDatasetEquality(ds2, ds1, ignoreMetadata = false)
+      }
     }
   }
 
