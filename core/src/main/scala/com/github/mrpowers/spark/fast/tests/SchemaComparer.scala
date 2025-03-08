@@ -14,7 +14,8 @@ object SchemaComparer {
   private def betterSchemaMismatchMessage(actualSchema: StructType, expectedSchema: StructType): String = {
     showProductDiff(
       ("Actual Schema", "Expected Schema"),
-      Left(actualSchema.fields.toSeq -> expectedSchema.fields.toSeq),
+      actualSchema.fields,
+      expectedSchema.fields,
       truncate = 200
     )
   }
