@@ -2,7 +2,8 @@ package com.github.mrpowers.spark.fast.tests
 
 import com.github.mrpowers.spark.fast.tests.DataframeDiffOutputFormat.DataframeDiffOutputFormat
 import com.github.mrpowers.spark.fast.tests.DatasetComparer.maxUnequalRowsToShow
-import com.github.mrpowers.spark.fast.tests.SeqLikesExtensions.SeqExtensions
+import com.github.mrpowers.spark.fast.tests.api._
+import com.github.mrpowers.spark.fast.tests.api.SeqLikeExtensions.SeqExtensions
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{DataFrame, Dataset, Row}
@@ -12,7 +13,15 @@ import scala.reflect.ClassTag
 case class DatasetContentMismatch(smth: String) extends Exception(smth)
 case class DatasetCountMismatch(smth: String)   extends Exception(smth)
 
-trait DatasetComparer {
+/**
+ * Trait for comparing Spark DataFrames and Datasets in tests. Uses original typed comparison for Dataset[T] to preserve Product type names in error
+ * messages (e.g., Person(bob,1)). Uses RDD-based approach for large dataset comparisons (Spark-specific).
+ */
+trait DatasetComparer extends DataFrameLikeComparer {
+
+  // Import the Spark DataFrameLike instance
+  implicit val sparkDataFrameLike: DataFrameLike[DataFrame] = SparkDataFrameLike.instance
+
   private def countMismatchMessage(actualCount: Long, expectedCount: Long): String = {
     s"""
 Actual DataFrame Row Count: '$actualCount'
@@ -29,6 +38,8 @@ Expected DataFrame Row Count: '$expectedCount'
       .mkString("\n")
   }
 
+  // ============ Spark-specific helper methods ============
+
   /**
    * order ds1 column according to ds2 column order
    */
@@ -36,8 +47,22 @@ Expected DataFrame Row Count: '$expectedCount'
     ds1.select(ds2.columns.map(col).toIndexedSeq: _*).as[T](ds2.encoder)
   }
 
+  def defaultSortDataset[T](ds: Dataset[T]): Dataset[T] = ds.sort(ds.columns.map(col).toIndexedSeq: _*)
+
+  def sortPreciseColumns[T](ds: Dataset[T]): Dataset[T] = {
+    val colNames = ds.dtypes
+      .withFilter { dtype =>
+        !Seq("DoubleType", "DecimalType", "FloatType").contains(dtype._2)
+      }
+      .map(_._1)
+    val cols = colNames.map(col)
+    ds.sort(cols: _*)
+  }
+
+  // ============ Small dataset comparisons (preserves typed Product names like Person) ============
+
   /**
-   * Raises an error unless `actualDS` and `expectedDS` are equal
+   * Raises an error unless `actualDS` and `expectedDS` are equal. Uses typed comparison to preserve Product type names in error messages.
    */
   def assertSmallDatasetEquality[T: ClassTag](
       actualDS: Dataset[T],
@@ -80,22 +105,12 @@ Expected DataFrame Row Count: '$expectedCount'
     val a = actualDS.collect().toSeq
     val e = expectedDS.collect().toSeq
     if (!a.approximateSameElements(e, equals)) {
-      val msg = "Diffs\n" ++ ProductUtil.showProductDiff(expectedDS.columns, a, e, truncate, outputFormat = outputFormat)
+      val msg = "Diffs\n" ++ ProductLikeUtil.showProductDiff(actualDS.columns, a, e, truncate, outputFormat = outputFormat)
       throw DatasetContentMismatch(msg)
     }
   }
 
-  def defaultSortDataset[T](ds: Dataset[T]): Dataset[T] = ds.sort(ds.columns.map(col).toIndexedSeq: _*)
-
-  def sortPreciseColumns[T](ds: Dataset[T]): Dataset[T] = {
-    val colNames = ds.dtypes
-      .withFilter { dtype =>
-        !Seq("DoubleType", "DecimalType", "FloatType").contains(dtype._2)
-      }
-      .map(_._1)
-    val cols = colNames.map(col)
-    ds.sort(cols: _*)
-  }
+  // ============ Large dataset comparisons (RDD-based, Spark-specific) ============
 
   /**
    * Raises an error unless `actualDS` and `expectedDS` are equal
