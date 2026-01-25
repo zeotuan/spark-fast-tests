@@ -5,9 +5,7 @@ import com.github.mrpowers.spark.fast.tests.DataframeDiffOutputFormat.DataframeD
 import com.snowflake.snowpark.DataFrame
 
 /**
- * Trait for comparing Snowpark DataFrames in tests.
- *
- * This uses the generic DataFrameLikeComparer methods with a Snowpark-specific DataFrameLike instance. It does not depend on Spark.
+ * Provides assertion utilities for Snowpark DataFrames.
  *
  * Usage:
  * {{{
@@ -22,8 +20,7 @@ import com.snowflake.snowpark.DataFrame
  */
 trait SnowparkDataFrameComparer extends DataFrameLikeComparer {
 
-  // Import the Snowpark DataFrameLike instance
-  implicit val snowparkDataFrameLike: DataFrameLike[DataFrame] = SnowparkDataFrameLike.instance
+  implicit val snowparkDataFrameLike: DataFrameLike[DataFrame, RowLike] = SnowparkDataFrameLike.instance
 
   /**
    * Raises an error unless `actualDF` and `expectedDF` are equal. This is for small DataFrames that can be collected to the driver.
@@ -39,7 +36,7 @@ trait SnowparkDataFrameComparer extends DataFrameLikeComparer {
       truncate: Int = 500,
       outputFormat: DataframeDiffOutputFormat = DataframeDiffOutputFormat.SideBySide
   ): Unit = {
-    assertDataFrameLikeEquality[DataFrame](
+    assertDataFrameLikeEquality[DataFrame, RowLike](
       actualDF,
       expectedDF,
       ignoreNullable,
@@ -49,7 +46,7 @@ trait SnowparkDataFrameComparer extends DataFrameLikeComparer {
       ignoreMetadata,
       truncate,
       outputFormat = outputFormat
-    )(snowparkDataFrameLike)
+    )
   }
 
   /**
@@ -79,7 +76,7 @@ trait SnowparkDataFrameComparer extends DataFrameLikeComparer {
       ignoreMetadata,
       truncate,
       outputFormat
-    )(snowparkDataFrameLike)
+    )
   }
 
   /**

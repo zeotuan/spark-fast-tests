@@ -61,6 +61,9 @@ trait RowLike extends Serializable {
 }
 
 object RowLike {
+  import scala.reflect.ClassTag
+
+  implicit val rowLikeClassTag: ClassTag[RowLike] = ClassTag(classOf[RowLike])
 
   /** Creates a generic RowLike from a sequence of values */
   def fromSeq(values: Seq[Any]): RowLike = new GenericRowLike(values.toArray)

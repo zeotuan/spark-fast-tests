@@ -2,8 +2,10 @@ package com.github.mrpowers.spark.fast.tests
 
 import com.github.mrpowers.spark.fast.tests.api._
 
+import scala.language.implicitConversions
+
 /**
- * Adapter to convert Snowpark Row to RowLike. Uses reflection to avoid compile-time dependency on Snowpark.
+ * Adapter to convert Snowpark Row to RowLike.
  */
 class SnowparkRowAdapter(private[tests] val row: com.snowflake.snowpark.Row) extends RowLike {
 
@@ -57,7 +59,7 @@ object SnowparkRowAdapter {
 }
 
 /**
- * Adapter to convert Snowpark StructField to FieldLike
+ * Adapter to convert Snowpark StructField to FieldLike.
  */
 class SnowparkFieldAdapter(field: com.snowflake.snowpark.types.StructField) extends FieldLike {
 
@@ -76,7 +78,7 @@ object SnowparkFieldAdapter {
 }
 
 /**
- * Adapter to convert Snowpark StructType to SchemaLike
+ * Adapter to convert Snowpark StructType to SchemaLike.
  */
 class SnowparkSchemaAdapter(schema: com.snowflake.snowpark.types.StructType) extends SchemaLike {
 
@@ -89,7 +91,7 @@ object SnowparkSchemaAdapter {
 }
 
 /**
- * Converter for Snowpark DataType to DataTypeLike
+ * Converter for Snowpark DataType to DataTypeLike.
  */
 object SnowparkDataTypeAdapter {
   import com.snowflake.snowpark.types._
@@ -115,9 +117,9 @@ object SnowparkDataTypeAdapter {
 }
 
 /**
- * DataFrameLike instance for Snowpark DataFrame
+ * DataFrameLike instance for Snowpark DataFrame.
  */
-object SnowparkDataFrameLike extends DataFrameLike[com.snowflake.snowpark.DataFrame] {
+object SnowparkDataFrameLike extends DataFrameLike[com.snowflake.snowpark.DataFrame, RowLike] {
   import com.snowflake.snowpark.functions.col
 
   override def schema(df: com.snowflake.snowpark.DataFrame): SchemaLike =
@@ -142,6 +144,5 @@ object SnowparkDataFrameLike extends DataFrameLike[com.snowflake.snowpark.DataFr
   override def dtypes(df: com.snowflake.snowpark.DataFrame): Array[(String, String)] =
     df.schema.map(f => (f.name, f.dataType.toString)).toArray
 
-  // Provide implicit for type class usage
-  implicit val instance: DataFrameLike[com.snowflake.snowpark.DataFrame] = this
+  implicit val instance: DataFrameLike[com.snowflake.snowpark.DataFrame, RowLike] = this
 }

@@ -5,12 +5,11 @@ import com.github.mrpowers.spark.fast.tests.SchemaDiffOutputFormat
 import com.github.mrpowers.spark.fast.tests.comparer.schema.FieldComparison.{areFieldsEqual, buildComparison, treeSchemaMismatchMessage}
 
 /**
- * Generic schema comparison that works with SchemaLike abstractions. No Spark or Snowpark dependencies.
+ * Generic schema comparison that works with SchemaLike abstractions.
  */
 object SchemaLikeComparer {
 
   private def schemaLikeMismatchMessage(actualSchema: SchemaLike, expectedSchema: SchemaLike): String = {
-    // Use ProductLikeUtil.showProductDiff like original SchemaComparer.betterSchemaMismatchMessage
     ProductLikeUtil.showProductDiffWithHeader(
       Seq("Actual Schema", "Expected Schema"),
       Array.empty[String],
@@ -39,7 +38,7 @@ object SchemaLikeComparer {
         case SchemaDiffOutputFormat.Tree  => treeSchemaMismatchMessage(diffTree)
         case SchemaDiffOutputFormat.Table => schemaLikeMismatchMessage(actualSchema, expectedSchema)
       }
-      throw SchemaMismatch(s"Diffs\n$diffString")
+      throw DatasetSchemaMismatch(s"Diffs\n$diffString")
     }
   }
 

@@ -38,7 +38,6 @@ object ProductLikeUtil {
     showProductDiffWithHeader(Seq("Actual Content", "Expected Content"), columns, actual, expected, truncate, minColWidth, outputFormat)
   }
 
-  // Overload with custom header for schema comparison
   private[mrpowers] def showProductDiffWithHeader[T: ClassTag](
       header: Seq[String],
       columns: Array[String],
@@ -64,7 +63,6 @@ object ProductLikeUtil {
       minColWidth: Int = 3
   ): String = {
     val runTimeClass = implicitly[ClassTag[T]].runtimeClass
-    // Use Row-like format for RowLike and Seq types (brackets), StructField for FieldLike, otherwise use Product format (parens)
     val (className, lBracket, rBracket) = {
       if (classOf[RowLike].isAssignableFrom(runTimeClass) || classOf[Seq[_]].isAssignableFrom(runTimeClass)) {
         ("", "[", "]")
@@ -120,10 +118,8 @@ object ProductLikeUtil {
       }
     val numCols = 2
 
-    // Initialise the width of each column to a minimum value
     val colWidths = Array.fill(numCols)(minColWidth)
 
-    // Compute the width of each column
     header.zipWithIndex.foreach { case (cell, i) =>
       colWidths(i) = math.max(colWidths(i), cell.length)
     }
@@ -134,14 +130,12 @@ object ProductLikeUtil {
       }
     }
 
-    // Create SeparateLine
     val sep: String =
       colWidths
         .map("-" * _)
         .addString(sb, "+", "+", "+\n")
         .toString
 
-    // column names
     header.zipWithIndex
       .map { case (cell, i) =>
         if (truncate > 0) {
@@ -185,7 +179,6 @@ object ProductLikeUtil {
     val actualRows   = actual.map(productOrSeqToSeq)
     val expectedRows = expected.map(productOrSeqToSeq)
     val colWidths    = getColWidths(fieldNames, actualRows ++ expectedRows, truncate, minColWidth)
-    // needed to calculate padding for other elements
     val largestIndexOffset = {
       if (actualRows.isEmpty && expectedRows.isEmpty) 0
       else {

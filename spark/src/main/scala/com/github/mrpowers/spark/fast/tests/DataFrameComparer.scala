@@ -5,12 +5,13 @@ import org.apache.spark.sql.{DataFrame, Row}
 import com.github.mrpowers.spark.fast.tests.DataframeDiffOutputFormat.DataframeDiffOutputFormat
 
 /**
- * Trait for comparing Spark DataFrames in tests. Delegates to core DataFrameLikeComparer for small DataFrame comparisons.
+ * Provides assertion utilities for Spark DataFrames.
  */
 trait DataFrameComparer extends DatasetComparer {
+  implicit val sparkDataFrameLike: DataFrameLike[DataFrame, RowLike] = SparkDataFrameLike.instance
 
   /**
-   * Raises an error unless `actualDF` and `expectedDF` are equal. Delegates to core DataFrameLikeComparer.
+   * Raises an error unless `actualDF` and `expectedDF` are equal.
    */
   def assertSmallDataFrameEquality(
       actualDF: DataFrame,
@@ -23,29 +24,22 @@ trait DataFrameComparer extends DatasetComparer {
       truncate: Int = 500,
       outputFormat: DataframeDiffOutputFormat = DataframeDiffOutputFormat.SideBySide
   ): Unit = {
-    try {
-      assertDataFrameLikeEquality[DataFrame](
-        actualDF,
-        expectedDF,
-        ignoreNullable,
-        ignoreColumnNames,
-        orderedComparison,
-        ignoreColumnOrder,
-        ignoreMetadata,
-        truncate,
-        equals = (r1: RowLike, r2: RowLike) => r1.equals(r2),
-        outputFormat
-      )(sparkDataFrameLike)
-    } catch {
-      case e: ContentMismatch =>
-        throw DatasetContentMismatch(e.getMessage)
-      case e: SchemaMismatch =>
-        throw SchemaComparer.DatasetSchemaMismatch(e.getMessage)
-    }
+    assertDataFrameLikeEquality[DataFrame, RowLike](
+      actualDF,
+      expectedDF,
+      ignoreNullable,
+      ignoreColumnNames,
+      orderedComparison,
+      ignoreColumnOrder,
+      ignoreMetadata,
+      truncate,
+      equals = (r1: RowLike, r2: RowLike) => r1.equals(r2),
+      outputFormat
+    )
   }
 
   /**
-   * Raises an error unless `actualDF` and `expectedDF` are equal. Uses RDD-based approach for large DataFrames.
+   * Raises an error unless `actualDF` and `expectedDF` are equal. Optimized for large DataFrames.
    */
   def assertLargeDataFrameEquality(
       actualDF: DataFrame,
@@ -68,7 +62,7 @@ trait DataFrameComparer extends DatasetComparer {
   }
 
   /**
-   * Raises an error unless `actualDF` and `expectedDF` are approximately equal. Delegates to core DataFrameLikeComparer.
+   * Raises an error unless `actualDF` and `expectedDF` are approximately equal within the given precision.
    */
   def assertApproximateSmallDataFrameEquality(
       actualDF: DataFrame,
@@ -82,29 +76,22 @@ trait DataFrameComparer extends DatasetComparer {
       truncate: Int = 500,
       outputFormat: DataframeDiffOutputFormat = DataframeDiffOutputFormat.SideBySide
   ): Unit = {
-    try {
-      assertApproximateDataFrameLikeEquality[DataFrame](
-        actualDF,
-        expectedDF,
-        precision,
-        ignoreNullable,
-        ignoreColumnNames,
-        orderedComparison,
-        ignoreColumnOrder,
-        ignoreMetadata,
-        truncate,
-        outputFormat
-      )(sparkDataFrameLike)
-    } catch {
-      case e: ContentMismatch =>
-        throw DatasetContentMismatch(e.getMessage)
-      case e: SchemaMismatch =>
-        throw SchemaComparer.DatasetSchemaMismatch(e.getMessage)
-    }
+    assertApproximateDataFrameLikeEquality(
+      actualDF,
+      expectedDF,
+      precision,
+      ignoreNullable,
+      ignoreColumnNames,
+      orderedComparison,
+      ignoreColumnOrder,
+      ignoreMetadata,
+      truncate,
+      outputFormat
+    )
   }
 
   /**
-   * Raises an error unless `actualDF` and `expectedDF` are approximately equal. Uses RDD-based approach for large DataFrames.
+   * Raises an error unless `actualDF` and `expectedDF` are approximately equal within the given precision. Optimized for large DataFrames.
    */
   def assertApproximateLargeDataFrameEquality(
       actualDF: DataFrame,
@@ -116,7 +103,7 @@ trait DataFrameComparer extends DatasetComparer {
       ignoreColumnOrder: Boolean = false,
       ignoreMetadata: Boolean = true
   ): Unit = {
-    assertLargeDatasetEquality[Row](
+    assertLargeDatasetEquality(
       actualDF,
       expectedDF,
       equals = RowComparer.areRowsEqual(_, _, precision),

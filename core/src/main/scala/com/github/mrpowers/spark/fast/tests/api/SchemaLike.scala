@@ -38,7 +38,6 @@ trait FieldLike extends Serializable with Product {
   /** Field metadata (optional) */
   def metadata: Map[String, Any] = Map.empty
 
-  // Product implementation for consistent formatting with ProductLikeUtil
   override def productArity: Int = 4
   override def productElement(n: Int): Any = n match {
     case 0 => name
@@ -49,7 +48,6 @@ trait FieldLike extends Serializable with Product {
   }
   override def canEqual(that: Any): Boolean = that.isInstanceOf[FieldLike]
 
-  // toString format matches Spark's StructField format: StructField(name,TypeName,nullable,{metadata})
   override def toString: String = s"StructField($name,${dataType.typeName.capitalize}Type,$nullable,${productElement(3)})"
 }
 
@@ -60,7 +58,6 @@ sealed trait DataTypeLike extends Serializable {
   def typeName: String
 }
 
-// Atomic types - use lowercase names to match Spark's convention
 case object StringTypeLike extends DataTypeLike {
   override def typeName: String = "string"
 }
@@ -109,7 +106,6 @@ case class DecimalTypeLike(precision: Int, scale: Int) extends DataTypeLike {
   override def typeName: String = s"decimal($precision,$scale)"
 }
 
-// Complex types - use lowercase names to match Spark's convention
 case class ArrayTypeLike(elementType: DataTypeLike, containsNull: Boolean = true) extends DataTypeLike {
   override def typeName: String = "array"
 }
@@ -122,7 +118,6 @@ case class StructTypeLike(fields: Seq[FieldLike]) extends DataTypeLike with Sche
   override def typeName: String = "struct"
 }
 
-// Fallback for unknown types
 case class UnknownTypeLike(originalTypeName: String) extends DataTypeLike {
   override def typeName: String = originalTypeName
 }

@@ -6,13 +6,17 @@ import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.col
 
 /**
- * Adapter to convert Spark Row to RowLike
+ * Adapter to convert Spark Row to RowLike.
  */
 class SparkRowAdapter(private[tests] val row: Row) extends RowLike {
 
+  org.apache.spark.sql.Encoders
   override def length: Int = row.length
 
-  override def get(index: Int): Any = row.get(index)
+  override def get(index: Int): Any = row.get(index) match {
+    case nestedRow: Row => SparkRowAdapter(nestedRow) // Wrap nested Rows for RowLikeComparer
+    case other          => other
+  }
 
   override def isNullAt(index: Int): Boolean = row.isNullAt(index)
 
@@ -71,16 +75,25 @@ class SparkFieldAdapter(field: StructField) extends FieldLike {
   override def nullable: Boolean = field.nullable
 
   override def metadata: Map[String, Any] = {
-    // Convert Spark Metadata to Map
     val m = field.metadata
     if (m.equals(Metadata.empty)) {
       Map.empty
     } else {
       m.json.hashCode() match {
-        case _ => Map("_sparkMetadata" -> m) // preserve original for comparison
+        case _ => Map("_sparkMetadata" -> m)
       }
     }
   }
+
+  override def productElement(n: Int): Any = n match {
+    case 0 => name
+    case 1 => dataType.typeName.capitalize + "Type"
+    case 2 => nullable
+    case 3 => field.metadata.json // Use Spark's JSON format directly
+    case _ => throw new IndexOutOfBoundsException(n.toString)
+  }
+
+  override def toString: String = field.toString
 }
 
 object SparkFieldAdapter {
@@ -104,6 +117,8 @@ object SparkSchemaAdapter {
  */
 object SparkDataTypeAdapter {
 
+  def apply(dt: DataType): DataTypeLike = convert(dt)
+
   def convert(dt: DataType): DataTypeLike = dt match {
     case StringType     => StringTypeLike
     case BooleanType    => BooleanTypeLike
@@ -125,9 +140,9 @@ object SparkDataTypeAdapter {
 }
 
 /**
- * DataFrameLike instance for Spark DataFrame
+ * DataFrameLike instance for Spark DataFrame with RowLike row type. Used for approximate comparisons that need RowLikeComparer.
  */
-object SparkDataFrameLike extends DataFrameLike[DataFrame] {
+object SparkDataFrameLike extends DataFrameLike[DataFrame, RowLike] {
 
   override def schema(df: DataFrame): SchemaLike = SparkSchemaAdapter(df.schema)
 
@@ -146,6 +161,5 @@ object SparkDataFrameLike extends DataFrameLike[DataFrame] {
 
   override def dtypes(df: DataFrame): Array[(String, String)] = df.dtypes
 
-  // Provide implicit for type class usage
-  implicit val instance: DataFrameLike[DataFrame] = this
+  implicit val instance: DataFrameLike[DataFrame, RowLike] = this
 }

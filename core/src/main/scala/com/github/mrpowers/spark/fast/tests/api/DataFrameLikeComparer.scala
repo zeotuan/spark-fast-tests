@@ -6,28 +6,29 @@ import com.github.mrpowers.spark.fast.tests.SchemaDiffOutputFormat.SchemaDiffOut
 import com.github.mrpowers.spark.fast.tests.SchemaDiffOutputFormat
 import com.github.mrpowers.spark.fast.tests.api.SeqLikeExtensions.SeqExtensions
 
+import scala.reflect.ClassTag
+
 /**
- * Generic DataFrame comparison trait that works with any DataFrame type via the DataFrameLike type class. This trait has no Spark dependencies and
- * can be used by both Spark and Snowpark modules.
+ * Provides assertion utilities for DataFrame-like types via the DataFrameLike type class.
  */
 trait DataFrameLikeComparer {
 
   /**
-   * Orders columns of df1 according to df2's column order. Generic version that works with any DataFrame type.
+   * Orders columns of df1 according to df2's column order.
    */
-  def orderColumnsGeneric[F](df1: F, df2: F)(implicit ev: DataFrameLike[F]): F = {
+  def orderColumnsGeneric[F, R](df1: F, df2: F)(implicit ev: DataFrameLike[F, R]): F = {
     ev.select(df1, ev.columns(df2).toSeq)
   }
 
   /**
-   * Sorts the DataFrame by all columns. Generic version that works with any DataFrame type.
+   * Sorts the DataFrame by all columns.
    */
-  def defaultSortGeneric[F](df: F)(implicit ev: DataFrameLike[F]): F = ev.sort(df)
+  def defaultSortGeneric[F, R](df: F)(implicit ev: DataFrameLike[F, R]): F = ev.sort(df)
 
   /**
-   * Raises an error unless `actualDF` and `expectedDF` are equal. Generic version that works with any DataFrame type via DataFrameLike type class.
+   * Raises an error unless `actualDF` and `expectedDF` are equal.
    */
-  def assertDataFrameLikeEquality[F](
+  def assertDataFrameLikeEquality[F, R: ClassTag](
       actualDF: F,
       expectedDF: F,
       ignoreNullable: Boolean = false,
@@ -36,11 +37,10 @@ trait DataFrameLikeComparer {
       ignoreColumnOrder: Boolean = false,
       ignoreMetadata: Boolean = true,
       truncate: Int = 500,
-      equals: (RowLike, RowLike) => Boolean = (o1: RowLike, o2: RowLike) => o1.equals(o2),
+      equals: (R, R) => Boolean = (o1: R, o2: R) => o1.equals(o2),
       outputFormat: DataframeDiffOutputFormat = DataframeDiffOutputFormat.SideBySide,
       schemaDiffOutputFormat: SchemaDiffOutputFormat = SchemaDiffOutputFormat.Table
-  )(implicit ev: DataFrameLike[F]): Unit = {
-    // Check schema equality using generic SchemaLike comparison
+  )(implicit ev: DataFrameLike[F, R]): Unit = {
     SchemaLikeComparer.assertSchemaEqual(
       ev.schema(actualDF),
       ev.schema(expectedDF),
@@ -57,14 +57,14 @@ trait DataFrameLikeComparer {
   /**
    * Compares content of two DataFrames. Generic version that works with any DataFrame type.
    */
-  def assertDataFrameLikeContentEquality[F](
+  def assertDataFrameLikeContentEquality[F, R: ClassTag](
       actualDF: F,
       expectedDF: F,
       orderedComparison: Boolean,
       truncate: Int,
-      equals: (RowLike, RowLike) => Boolean,
+      equals: (R, R) => Boolean,
       outputFormat: DataframeDiffOutputFormat
-  )(implicit ev: DataFrameLike[F]): Unit = {
+  )(implicit ev: DataFrameLike[F, R]): Unit = {
     val (actual, expected) = if (orderedComparison) {
       (actualDF, expectedDF)
     } else {
@@ -82,7 +82,7 @@ trait DataFrameLikeComparer {
         truncate,
         outputFormat = outputFormat
       )
-      throw ContentMismatch(msg)
+      throw DatasetContentMismatch(msg)
     }
   }
 
@@ -101,7 +101,7 @@ trait DataFrameLikeComparer {
       ignoreMetadata: Boolean = true,
       truncate: Int = 500,
       outputFormat: DataframeDiffOutputFormat = DataframeDiffOutputFormat.SideBySide
-  )(implicit ev: DataFrameLike[F]): Unit = {
+  )(implicit ev: DataFrameLike[F, RowLike]): Unit = {
     val equalsWithPrecision = (r1: RowLike, r2: RowLike) => {
       r1.equals(r2) || RowLikeComparer.areRowsEqual(r1, r2, precision)
     }
