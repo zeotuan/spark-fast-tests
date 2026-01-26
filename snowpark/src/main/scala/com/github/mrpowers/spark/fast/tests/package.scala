@@ -19,10 +19,6 @@ package object snowpark {
   // Re-export the main comparer trait
   type SnowparkDataFrameComparer = com.github.mrpowers.spark.fast.tests.SnowparkDataFrameComparer
 
-  // Re-export exception types from core api (generic exceptions)
-  type ContentMismatch = com.github.mrpowers.spark.fast.tests.api.ContentMismatch
-  type SchemaMismatch  = com.github.mrpowers.spark.fast.tests.api.SchemaMismatch
-
   // Re-export adapters for advanced usage
   val SnowparkRowAdapter    = com.github.mrpowers.spark.fast.tests.SnowparkRowAdapter
   val SnowparkSchemaAdapter = com.github.mrpowers.spark.fast.tests.SnowparkSchemaAdapter
