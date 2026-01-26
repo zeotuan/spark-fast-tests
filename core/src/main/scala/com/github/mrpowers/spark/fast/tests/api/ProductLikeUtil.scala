@@ -312,7 +312,7 @@ object ProductLikeUtil {
     if (s.length >= width) s else s + " " * (width - s.length)
   }
 
-  private def cellToString(cell: Any, truncate: Int): String = {
+  private[mrpowers] def cellToString(cell: Any, truncate: Int): String = {
     val str = cell match {
       case null                => "null"
       case binary: Array[Byte] => binary.map("%02X".format(_)).mkString("[", " ", "]")
