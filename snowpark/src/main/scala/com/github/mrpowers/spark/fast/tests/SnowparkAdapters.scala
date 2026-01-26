@@ -58,7 +58,7 @@ object SnowparkFieldAdapter {
  */
 class SnowparkSchemaAdapter(schema: com.snowflake.snowpark.types.StructType) extends SchemaLike {
 
-  override def fields: Seq[FieldLike] = schema.toSeq.map(SnowparkFieldAdapter.apply)
+  override def fields: Seq[FieldLike] = schema.map(SnowparkFieldAdapter.apply)
 }
 
 object SnowparkSchemaAdapter {
@@ -85,9 +85,9 @@ object SnowparkDataTypeAdapter {
     case DateType       => DateTypeLike
     case TimestampType  => TimestampTypeLike
     case d: DecimalType => DecimalTypeLike(d.precision, d.scale)
-    case a: ArrayType   => ArrayTypeLike(convert(a.elementType), true)
-    case m: MapType     => MapTypeLike(convert(m.keyType), convert(m.valueType), true)
-    case s: StructType  => StructTypeLike(s.toSeq.map(f => SnowparkFieldAdapter(f)))
+    case a: ArrayType   => ArrayTypeLike(convert(a.elementType))
+    case m: MapType     => MapTypeLike(convert(m.keyType), convert(m.valueType))
+    case s: StructType  => StructTypeLike(s.map(f => SnowparkFieldAdapter(f)))
     case other          => UnknownTypeLike(other.toString)
   }
 }
@@ -101,8 +101,8 @@ object SnowparkDataFrameLike extends DataFrameLike[com.snowflake.snowpark.DataFr
   override def schema(df: com.snowflake.snowpark.DataFrame): SchemaLike =
     SnowparkSchemaAdapter(df.schema)
 
-  override def collect(df: com.snowflake.snowpark.DataFrame): Array[RowLike] =
-    df.collect().map(SnowparkRowAdapter)
+  override def collect(df: com.snowflake.snowpark.DataFrame): Seq[RowLike] =
+    df.collect().map(SnowparkRowAdapter.apply)
 
   override def columns(df: com.snowflake.snowpark.DataFrame): Array[String] =
     df.schema.names.toArray

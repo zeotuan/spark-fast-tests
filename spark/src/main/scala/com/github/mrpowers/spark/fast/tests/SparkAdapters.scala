@@ -1,14 +1,15 @@
 package com.github.mrpowers.spark.fast.tests
 
 import com.github.mrpowers.spark.fast.tests.api._
-import org.apache.spark.sql.{DataFrame, Row}
+import com.twitter.chill.Kryo
+import org.apache.spark.sql.{DataFrame, Encoder, Row}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.col
 
 /**
  * Adapter to convert Spark Row to RowLike.
  */
-class SparkRowAdapter(private[tests] val row: Row) extends RowLike {
+case class SparkRowAdapter(private[tests] val row: Row) extends RowLike {
   override def length: Int = row.length
 
   override def get(index: Int): Any = row.get(index) match {
@@ -109,29 +110,4 @@ object SparkDataTypeAdapter {
     case s: StructType  => StructTypeLike(s.fields.map(f => SparkFieldAdapter(f)).toSeq)
     case other          => UnknownTypeLike(other.typeName)
   }
-}
-
-/**
- * DataFrameLike instance for Spark DataFrame with RowLike row type. Used for approximate comparisons that need RowLikeComparer.
- */
-object SparkDataFrameLike extends DataFrameLike[DataFrame, RowLike] {
-
-  override def schema(df: DataFrame): SchemaLike = SparkSchemaAdapter(df.schema)
-
-  override def collect(df: DataFrame): Array[RowLike] =
-    df.collect().map(SparkRowAdapter)
-
-  override def columns(df: DataFrame): Array[String] = df.columns
-
-  override def count(df: DataFrame): Long = df.count()
-
-  override def select(df: DataFrame, columns: Seq[String]): DataFrame =
-    df.select(columns.map(col): _*)
-
-  override def sort(df: DataFrame): DataFrame =
-    df.sort(df.columns.map(col): _*)
-
-  override def dtypes(df: DataFrame): Array[(String, String)] = df.dtypes
-
-  implicit val instance: DataFrameLike[DataFrame, RowLike] = this
 }

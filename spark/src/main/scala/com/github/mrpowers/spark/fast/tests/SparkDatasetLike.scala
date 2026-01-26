@@ -1,7 +1,7 @@
 package com.github.mrpowers.spark.fast.tests
 
 import com.github.mrpowers.spark.fast.tests.api._
-import org.apache.spark.sql.{Dataset, Encoder}
+import org.apache.spark.sql.{DataFrame, Dataset, Encoder}
 import org.apache.spark.sql.functions.col
 
 /**
@@ -16,7 +16,7 @@ object SparkDatasetLike {
 
     override def schema(ds: Dataset[T]): SchemaLike = SparkSchemaAdapter(ds.schema)
 
-    override def collect(ds: Dataset[T]): Array[T] = ds.collect()
+    override def collect(ds: Dataset[T]): Seq[T] = ds.collect()
 
     override def columns(ds: Dataset[T]): Array[String] = ds.columns
 
@@ -30,4 +30,30 @@ object SparkDatasetLike {
 
     override def dtypes(ds: Dataset[T]): Array[(String, String)] = ds.dtypes
   }
+}
+
+/**
+ * DataFrameLike instance for Spark DataFrame with RowLike row type. Used for approximate comparisons that need RowLikeComparer.
+ */
+object SparkDataFrameLike extends DataFrameLike[DataFrame, RowLike] {
+
+  override def schema(df: DataFrame): SchemaLike = SparkSchemaAdapter(df.schema)
+
+  override def collect(df: DataFrame): Seq[RowLike] = {
+    df.map(SparkRowAdapter.apply)(org.apache.spark.sql.Encoders.kryo[SparkRowAdapter]).collect()
+  }
+
+  override def columns(df: DataFrame): Array[String] = df.columns
+
+  override def count(df: DataFrame): Long = df.count()
+
+  override def select(df: DataFrame, columns: Seq[String]): DataFrame =
+    df.select(columns.map(col): _*)
+
+  override def sort(df: DataFrame): DataFrame =
+    df.sort(df.columns.map(col): _*)
+
+  override def dtypes(df: DataFrame): Array[(String, String)] = df.dtypes
+
+  implicit val instance: DataFrameLike[DataFrame, RowLike] = this
 }

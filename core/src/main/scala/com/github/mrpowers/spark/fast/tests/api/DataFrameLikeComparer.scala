@@ -71,8 +71,8 @@ trait DataFrameLikeComparer {
       (defaultSortGeneric(actualDF), defaultSortGeneric(expectedDF))
     }
 
-    val actualRows   = ev.collect(actual).toSeq
-    val expectedRows = ev.collect(expected).toSeq
+    val actualRows   = ev.collect(actual)
+    val expectedRows = ev.collect(expected)
 
     if (!actualRows.approximateSameElements(expectedRows, equals)) {
       val msg = "Diffs\n" ++ ProductLikeUtil.showProductDiff(
