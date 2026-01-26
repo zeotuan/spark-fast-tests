@@ -33,8 +33,7 @@ trait DataFrameComparer extends DatasetComparer {
       ignoreColumnOrder,
       ignoreMetadata,
       truncate,
-      equals = (r1: RowLike, r2: RowLike) => r1.equals(r2),
-      outputFormat
+      outputFormat = outputFormat
     )
   }
 

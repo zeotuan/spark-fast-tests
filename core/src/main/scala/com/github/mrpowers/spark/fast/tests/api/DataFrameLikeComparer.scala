@@ -102,9 +102,6 @@ trait DataFrameLikeComparer {
       truncate: Int = 500,
       outputFormat: DataframeDiffOutputFormat = DataframeDiffOutputFormat.SideBySide
   )(implicit ev: DataFrameLike[F, RowLike]): Unit = {
-    val equalsWithPrecision = (r1: RowLike, r2: RowLike) => {
-      r1.equals(r2) || RowLikeComparer.areRowsEqual(r1, r2, precision)
-    }
     assertDataFrameLikeEquality(
       actualDF,
       expectedDF,
@@ -114,7 +111,7 @@ trait DataFrameLikeComparer {
       ignoreColumnOrder,
       ignoreMetadata,
       truncate,
-      equalsWithPrecision,
+      (r1: RowLike, r2: RowLike) => RowLikeComparer.areRowsEqual(r1, r2, precision),
       outputFormat
     )
   }

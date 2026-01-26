@@ -1,7 +1,7 @@
 package com.github.mrpowers.spark.fast.tests
 
 import com.github.mrpowers.spark.fast.tests.api._
-import org.apache.spark.sql.{DataFrame, Dataset, Row}
+import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.col
 
@@ -9,42 +9,16 @@ import org.apache.spark.sql.functions.col
  * Adapter to convert Spark Row to RowLike.
  */
 class SparkRowAdapter(private[tests] val row: Row) extends RowLike {
-
-  org.apache.spark.sql.Encoders
   override def length: Int = row.length
 
   override def get(index: Int): Any = row.get(index) match {
-    case nestedRow: Row => SparkRowAdapter(nestedRow) // Wrap nested Rows for RowLikeComparer
+    case nestedRow: Row => SparkRowAdapter(nestedRow)
     case other          => other
   }
 
   override def isNullAt(index: Int): Boolean = row.isNullAt(index)
 
   override def toSeq: Seq[Any] = row.toSeq
-
-  override def getBoolean(index: Int): Boolean = row.getBoolean(index)
-
-  override def getByte(index: Int): Byte = row.getByte(index)
-
-  override def getShort(index: Int): Short = row.getShort(index)
-
-  override def getInt(index: Int): Int = row.getInt(index)
-
-  override def getLong(index: Int): Long = row.getLong(index)
-
-  override def getFloat(index: Int): Float = row.getFloat(index)
-
-  override def getDouble(index: Int): Double = row.getDouble(index)
-
-  override def getString(index: Int): String = row.getString(index)
-
-  override def getDecimal(index: Int): java.math.BigDecimal = row.getDecimal(index)
-
-  override def getDate(index: Int): java.sql.Date = row.getDate(index)
-
-  override def getTimestamp(index: Int): java.sql.Timestamp = row.getTimestamp(index)
-
-  override def getBinary(index: Int): Array[Byte] = row.getAs[Array[Byte]](index)
 
   override def equals(obj: Any): Boolean = obj match {
     case other: SparkRowAdapter => row.equals(other.row)
@@ -59,8 +33,6 @@ class SparkRowAdapter(private[tests] val row: Row) extends RowLike {
 
 object SparkRowAdapter {
   def apply(row: Row): SparkRowAdapter = new SparkRowAdapter(row)
-
-  implicit def rowToRowLike(row: Row): RowLike = new SparkRowAdapter(row)
 }
 
 /**
@@ -147,7 +119,7 @@ object SparkDataFrameLike extends DataFrameLike[DataFrame, RowLike] {
   override def schema(df: DataFrame): SchemaLike = SparkSchemaAdapter(df.schema)
 
   override def collect(df: DataFrame): Array[RowLike] =
-    df.collect().map(SparkRowAdapter.apply)
+    df.collect().map(SparkRowAdapter)
 
   override def columns(df: DataFrame): Array[String] = df.columns
 

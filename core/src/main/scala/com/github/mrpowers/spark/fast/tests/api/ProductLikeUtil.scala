@@ -17,7 +17,7 @@ object ProductLikeUtil {
   private[mrpowers] def productOrSeqToSeq(product: Any): Seq[Any] = {
     product match {
       case null           => Seq.empty
-      case r: RowLike     => r.toSeq // Handle RowLike abstraction
+      case r: RowLike     => r.toSeq
       case a: Array[_]    => a.toSeq
       case i: Iterable[_] => i.toSeq
       case p: Product     => p.productIterator.toSeq

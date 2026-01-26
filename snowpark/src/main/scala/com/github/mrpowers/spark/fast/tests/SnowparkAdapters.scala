@@ -17,30 +17,6 @@ class SnowparkRowAdapter(private[tests] val row: com.snowflake.snowpark.Row) ext
 
   override def toSeq: Seq[Any] = row.toSeq
 
-  override def getBoolean(index: Int): Boolean = row.getBoolean(index)
-
-  override def getByte(index: Int): Byte = row.getByte(index)
-
-  override def getShort(index: Int): Short = row.getShort(index)
-
-  override def getInt(index: Int): Int = row.getInt(index)
-
-  override def getLong(index: Int): Long = row.getLong(index)
-
-  override def getFloat(index: Int): Float = row.getFloat(index)
-
-  override def getDouble(index: Int): Double = row.getDouble(index)
-
-  override def getString(index: Int): String = row.getString(index)
-
-  override def getDecimal(index: Int): java.math.BigDecimal = row.getDecimal(index)
-
-  override def getDate(index: Int): java.sql.Date = row.getDate(index)
-
-  override def getTimestamp(index: Int): java.sql.Timestamp = row.getTimestamp(index)
-
-  override def getBinary(index: Int): Array[Byte] = row.getBinary(index)
-
   override def equals(obj: Any): Boolean = obj match {
     case other: SnowparkRowAdapter => row.equals(other.row)
     case other: RowLike            => super.equals(other)
@@ -126,7 +102,7 @@ object SnowparkDataFrameLike extends DataFrameLike[com.snowflake.snowpark.DataFr
     SnowparkSchemaAdapter(df.schema)
 
   override def collect(df: com.snowflake.snowpark.DataFrame): Array[RowLike] =
-    df.collect().map(SnowparkRowAdapter.apply)
+    df.collect().map(SnowparkRowAdapter)
 
   override def columns(df: com.snowflake.snowpark.DataFrame): Array[String] =
     df.schema.names.toArray
