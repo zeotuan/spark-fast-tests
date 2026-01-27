@@ -1,21 +1,24 @@
 package com.github.mrpowers.spark.fast.tests
 
 import com.github.mrpowers.spark.fast.tests.api._
-
-import scala.language.implicitConversions
+import com.snowflake.snowpark.types.StructType
 
 /**
  * Adapter to convert Snowpark Row to RowLike.
  */
-class SnowparkRowAdapter(private[tests] val row: com.snowflake.snowpark.Row) extends RowLike {
+class SnowparkRowAdapter(private[tests] val row: com.snowflake.snowpark.Row, schema: StructType) extends RowLike {
 
   override def length: Int = row.length
 
-  override def get(index: Int): Any = row.get(index)
+  override def get(index: Int): Any = row.get(index) match {
+    case r: com.snowflake.snowpark.Row =>
+      SnowparkRowAdapter(r, schema.fields(index).dataType.asInstanceOf[StructType])
+    case other => other
+  }
 
   override def isNullAt(index: Int): Boolean = row.isNullAt(index)
 
-  override def toSeq: Seq[Any] = row.toSeq
+  override def toSeq: Seq[Any] = for (i <- 0 until row.length) yield get(i)
 
   override def equals(obj: Any): Boolean = obj match {
     case other: SnowparkRowAdapter => row.equals(other.row)
@@ -26,12 +29,12 @@ class SnowparkRowAdapter(private[tests] val row: com.snowflake.snowpark.Row) ext
   override def hashCode(): Int = row.hashCode()
 
   override def toString: String = row.toString
+
+  override def schema: SchemaLike = SnowparkSchemaAdapter(schema)
 }
 
 object SnowparkRowAdapter {
-  def apply(row: com.snowflake.snowpark.Row): SnowparkRowAdapter = new SnowparkRowAdapter(row)
-
-  implicit def snowparkRowToRowLike(row: com.snowflake.snowpark.Row): RowLike = new SnowparkRowAdapter(row)
+  def apply(row: com.snowflake.snowpark.Row, schema: StructType): SnowparkRowAdapter = new SnowparkRowAdapter(row, schema)
 }
 
 /**
@@ -102,7 +105,7 @@ object SnowparkDataFrameLike extends DataFrameLike[com.snowflake.snowpark.DataFr
     SnowparkSchemaAdapter(df.schema)
 
   override def collect(df: com.snowflake.snowpark.DataFrame): Seq[RowLike] =
-    df.collect().map(SnowparkRowAdapter.apply)
+    df.collect().map(SnowparkRowAdapter.apply(_, df.schema))
 
   override def columns(df: com.snowflake.snowpark.DataFrame): Array[String] =
     df.schema.names.toArray

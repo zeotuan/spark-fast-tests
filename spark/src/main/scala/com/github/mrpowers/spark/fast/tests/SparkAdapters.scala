@@ -1,7 +1,6 @@
 package com.github.mrpowers.spark.fast.tests
 
 import com.github.mrpowers.spark.fast.tests.api._
-import com.twitter.chill.Kryo
 import org.apache.spark.sql.{DataFrame, Encoder, Row}
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.functions.col
@@ -19,7 +18,7 @@ case class SparkRowAdapter(private[tests] val row: Row) extends RowLike {
 
   override def isNullAt(index: Int): Boolean = row.isNullAt(index)
 
-  override def toSeq: Seq[Any] = row.toSeq
+  override def toSeq: Seq[Any] = for (i <- 0 until row.length) yield get(i)
 
   override def equals(obj: Any): Boolean = obj match {
     case other: SparkRowAdapter => row.equals(other.row)
@@ -30,6 +29,8 @@ case class SparkRowAdapter(private[tests] val row: Row) extends RowLike {
   override def hashCode(): Int = row.hashCode()
 
   override def toString: String = row.toString
+
+  override def schema: SchemaLike = SparkSchemaAdapter(row.schema)
 }
 
 object SparkRowAdapter {

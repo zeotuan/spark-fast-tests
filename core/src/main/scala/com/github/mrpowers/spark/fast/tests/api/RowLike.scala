@@ -22,4 +22,6 @@ trait RowLike extends Serializable {
 
   /** Converts this row to a Seq */
   def toSeq: Seq[Any]
+
+  def schema: SchemaLike
 }

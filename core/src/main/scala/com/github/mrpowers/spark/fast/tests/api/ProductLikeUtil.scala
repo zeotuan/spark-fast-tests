@@ -6,6 +6,8 @@ import com.github.mrpowers.spark.fast.tests.ufansi.Color.{DarkGray, Green, Red}
 import com.github.mrpowers.spark.fast.tests.ufansi.FansiExtensions.StrOps
 import com.github.mrpowers.spark.fast.tests.ufansi.Str
 
+import java.sql.Date
+import java.time.format.DateTimeFormatter
 import scala.reflect.ClassTag
 
 /**
@@ -314,7 +316,14 @@ object ProductLikeUtil {
 
   private[mrpowers] def cellToString(cell: Any, truncate: Int): String = {
     val str = cell match {
-      case null                => "null"
+      case null => "null"
+      case r: RowLike =>
+        r.schema.fieldNames
+          .zip(r.toSeq)
+          .map { case (k, v) => s"$k -> $v" }
+          .mkString("{", ", ", "}")
+      case d: Date =>
+        d.toLocalDate.format(DateTimeFormatter.ISO_DATE)
       case binary: Array[Byte] => binary.map("%02X".format(_)).mkString("[", " ", "]")
       case array: Array[_]     => array.mkString("[", ", ", "]")
       case seq: Seq[_]         => seq.mkString("[", ", ", "]")
