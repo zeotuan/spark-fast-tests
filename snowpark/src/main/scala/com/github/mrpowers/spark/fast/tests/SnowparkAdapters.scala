@@ -6,13 +6,13 @@ import com.snowflake.snowpark.types.StructType
 /**
  * Adapter to convert Snowpark Row to RowLike.
  */
-class SnowparkRowAdapter(private[tests] val row: com.snowflake.snowpark.Row, schema: StructType) extends RowLike {
+class SnowparkRowAdapter(private[tests] val row: com.snowflake.snowpark.Row, rowSchema: StructType) extends RowLike {
 
   override def length: Int = row.length
 
   override def get(index: Int): Any = row.get(index) match {
     case r: com.snowflake.snowpark.Row =>
-      SnowparkRowAdapter(r, schema.fields(index).dataType.asInstanceOf[StructType])
+      SnowparkRowAdapter(r, rowSchema.fields(index).dataType.asInstanceOf[StructType])
     case other => other
   }
 
@@ -30,7 +30,7 @@ class SnowparkRowAdapter(private[tests] val row: com.snowflake.snowpark.Row, sch
 
   override def toString: String = row.toString
 
-  override def schema: SchemaLike = SnowparkSchemaAdapter(schema)
+  override def schema: SchemaLike = SnowparkSchemaAdapter(rowSchema)
 }
 
 object SnowparkRowAdapter {
