@@ -3,12 +3,12 @@ package com.github.mrpowers.spark.fast.tests
 import com.github.mrpowers.spark.fast.tests.api._
 import org.apache.spark.sql.{DataFrame, Row}
 import com.github.mrpowers.spark.fast.tests.DataframeDiffOutputFormat.DataframeDiffOutputFormat
+import SparkDataFrameLike.instance
 
 /**
  * Provides assertion utilities for Spark DataFrames.
  */
 trait DataFrameComparer extends DatasetComparer {
-  implicit val sparkDataFrameLike: DataFrameLike[DataFrame, RowLike] = SparkDataFrameLike.instance
 
   /**
    * Raises an error unless `actualDF` and `expectedDF` are equal.
